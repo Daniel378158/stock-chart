@@ -1,0 +1,37 @@
+name: Test and Docker build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Test signal logic and web search
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pytest -q
+      - name: Build Docker image
+        run: docker build -t stock-chart:ci .
+      - name: Smoke test container
+        run: |
+          docker run -d --name stock-chart-ci -p 127.0.0.1:18765:8765 stock-chart:ci
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:18765/ | grep -q 'stock-search-form'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs stock-chart-ci
+          exit 1

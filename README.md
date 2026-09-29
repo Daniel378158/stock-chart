@@ -19,6 +19,8 @@ docker build -t stock-chart .
 docker run --rm -p 127.0.0.1:8765:8765 -v stock-chart-data:/app/charts stock-chart
 ```
 
+GitHub Actions 會在 `main` 的推送及 PR 上執行 pytest、建置映像並啟動容器檢查搜尋首頁；此流程只驗證映像，不會將映像推送到任何 registry。
+
 ## 執行（Windows PowerShell）
 
 ```powershell
