@@ -9,6 +9,7 @@
 </style>
 <style>
 .sidebar-tabs{display:flex;gap:4px;padding:4px;background:#0b111b;border:1px solid #263043;border-radius:8px;margin:18px 0 6px;position:sticky;top:0;z-index:4}.sidebar-tabs button{flex:1;border:0;background:transparent;padding:9px 6px;color:#8d9cb2;font-size:12px}.sidebar-tabs button[aria-selected=true]{background:#253044;color:#f1e2bf;box-shadow:0 1px 4px #0003}.sidebar-panel[hidden]{display:none}.signal-key{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:3px 0 9px;color:#8d9cb2;font-size:10px}.signal-key b{font-size:12px;margin-right:4px}.signal-key .pullback{color:#65b8ef}.signal-key .retest{color:#ffca67}.signal-key .combined{color:#bf9aff}.signal-tooltip{display:none;position:absolute;z-index:5;pointer-events:none;max-width:240px;background:#162132f2;border:1px solid #43526b;border-radius:6px;padding:8px 11px;box-shadow:0 5px 18px #0005;color:#e1e9f5;font-size:11px;white-space:pre-line}.signal button.view-signal{border:0;background:none;color:#aebfde;font-size:10px;padding:6px 0 0;display:block;width:100%;text-align:left}.signal button.view-signal:hover{color:#ffca67}.signal-date-label{display:block;color:#8796ad;font-size:11px;margin:14px 0 6px}.signal-date-select{width:100%;min-width:0;border:1px solid #35425a;border-radius:6px;padding:9px;background:#131d2c;color:#e2eaf5;font:12px system-ui}.signal-selection-note{color:#8393aa;font-size:11px;line-height:1.7;margin:10px 0 14px}.signal-detail-card{border:1px solid #334158;border-radius:8px;background:#151e2c;margin:10px 0;padding:13px}.signal-detail-card h3{font-size:13px;margin:0 0 3px;color:#edcf93}.signal-detail-card .signal-grid{grid-template-columns:1fr 1fr;gap:12px;margin-top:13px}.signal-detail-card .signal-grid b{font-size:17px}.signal-detail-card .signal-grid small{font-size:10px}.signal-facts{margin-top:13px;border-top:1px solid #2a3548;padding-top:9px;font-size:11px;color:#96a7bf}.signal-facts div{display:flex;justify-content:space-between;gap:8px;margin:5px 0}.signal-facts b{color:#d1dcec;font-weight:400;text-align:right}.signal-note{color:#96a7bf;font-size:11px;line-height:1.75;margin:9px 0 0}.guide{border-top:1px solid #2a3548;padding:12px 0;margin-top:10px}.guide summary{cursor:pointer;color:#c9d5e8;font-size:12px;font-weight:600}.guide svg{width:100%;height:auto;margin-top:10px;display:block;background:#0c131e;border:1px solid #283247;border-radius:7px}.guide p{font-size:11px;color:#a0aec3;line-height:1.8;margin:8px 0}.guide ol{padding-left:19px;color:#a0aec3;font-size:11px;line-height:1.8}.guide-caption{font-size:10px!important;color:#6f819b!important}.signal-panel-title{font-size:14px;margin:17px 0 0}.signal-panel-intro{color:#8fa0b8;font-size:11px;line-height:1.75;margin:6px 0}.signal-risk-note{color:#8091aa;font-size:10px;line-height:1.8}
+.chat-intro{color:#9aabc2;font-size:11px;line-height:1.7;margin:8px 0 12px}.chat-status{font-size:11px;color:#a4b3c8;border:1px solid #2c3a50;background:#141e2d;border-radius:6px;padding:8px 10px;margin-bottom:12px}.chat-status.error{display:block;position:static;margin:0 0 12px;padding:8px 10px}.chat-prompts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.chat-prompts button{font-size:11px;padding:5px 8px;border-radius:15px}.chat-messages{height:min(46vh,460px);min-height:250px;overflow:auto;background:#0c131e;border:1px solid #263449;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}.chat-message{max-width:92%;padding:9px 11px;border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.65}.chat-message.user{align-self:flex-end;background:#263b51;color:#edf5ff}.chat-message.assistant{align-self:flex-start;background:#1b2635;color:#dce7f5}.chat-placeholder{color:#7e90a8;font-size:11px;line-height:1.7}.chat-form{margin-top:12px}.chat-form label{font-size:11px;color:#9aabc2;display:block;margin-bottom:5px}.chat-form textarea{display:block;width:100%;min-height:74px;max-height:180px;resize:vertical;border:1px solid #394960;border-radius:7px;background:#101a29;color:#e5edf8;padding:9px 10px;font:12px/1.5 system-ui,"Microsoft JhengHei",sans-serif}.chat-form textarea:focus{outline:2px solid #668bc0;outline-offset:1px}.chat-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}.chat-actions small{color:#7d8da4;font-size:10px}.chat-actions button{background:#36557b;color:#fff;border-color:#5379a8}.chat-actions button:disabled{opacity:.5;cursor:not-allowed}.chat-notice{margin:12px 0 0;color:#8192a9;font-size:10px;line-height:1.7}
 </style>
 </head>
 <body>
@@ -25,7 +26,7 @@ __SEARCH__
 <div class="chart-foot"><span>滾輪縮放 · 拖曳平移 · 十字游標查看 OHLC</span><a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™ 4.2.3</a></div>
 </section><aside>
 <div class="eyebrow">LATEST PRICE <span id="currency"></span></div><div id="quote" class="quote"></div><div id="change" class="change"></div><div id="quote-detail" class="detail"></div>
-<div class="sidebar-tabs" role="tablist" aria-label="股票資訊分頁"><button id="tab-overview" role="tab" aria-selected="true" aria-controls="panel-overview">行情總覽</button><button id="tab-insights" role="tab" aria-selected="false" aria-controls="panel-insights" tabindex="-1">訊號解讀</button></div>
+<div class="sidebar-tabs" role="tablist" aria-label="股票資訊分頁"><button id="tab-overview" role="tab" aria-selected="true" aria-controls="panel-overview">行情總覽</button><button id="tab-insights" role="tab" aria-selected="false" aria-controls="panel-insights" tabindex="-1">訊號解讀</button><button id="tab-chat" role="tab" aria-selected="false" aria-controls="panel-chat" tabindex="-1">AI 對話</button></div>
 <section id="panel-overview" class="sidebar-panel" role="tabpanel" aria-labelledby="tab-overview">
 <div class="section-head"><h2>支撐 / 壓力區</h2><span>每側最多 4 區</span></div>
 <table><thead><tr><th>區間</th><th>強度</th><th>距現價</th></tr></thead><tbody id="zone-table"></tbody></table><div class="detail">綠色：支撐　紅色：壓力<br>距離以區間中心計算；強度為加權分數。</div>
@@ -44,6 +45,14 @@ __SEARCH__
 <p class="guide-caption">結構示意，非實際行情；金色標示回測訊號。</p>
 <ol><li>前收盤 ≤ 壓力上緣，當根收盤突破上緣。</li><li>下一根起 10 根內，最低價 ≤ 上緣 + 0.25 × ATR。</li><li>回測當根收陽，且收盤 ≥ 原區下緣。</li></ol><p>使用突破當時的區間；之後重算區間不會改寫這次設定。</p></details>
 <details class="guide"><summary>價位、R:R 與圖表怎麼看</summary><p>進場是訊號當日收盤的參考值；停損 = 當時區下緣 − 0.5 × ATR。目標取當時選定的上方最近壓力區下緣。</p><p>R:R =（目標 − 進場）÷（進場 − 停損）。沒有上方壓力區時顯示「—」。R:R 不代表勝率，以上也不是實際成交紀錄。</p><p>● 藍色圓點是拉回；▲ 金色箭頭是突破回測；■ 紫色方塊表示同日出現兩類訊號。? 代表盤中未確認。</p><p>MA 是均線，BOLL 是布林通道，ATR 是波動幅度。綠帶是最新支撐區，紅帶是最新壓力區；解讀卡顯示訊號當時的區間，可能與今日色帶不同。</p></details>
+</section>
+<section id="panel-chat" class="sidebar-panel" role="tabpanel" aria-labelledby="tab-chat" hidden>
+<h2 class="signal-panel-title">詢問目前股票</h2><p class="chat-intro">可問技術指標、支撐壓力和訊號。AI 會讀取 <strong id="chat-symbol"></strong> 的圖表快照。</p>
+<div id="chat-status" class="chat-status" role="status">正在檢查 AI 連線設定…</div>
+<div class="chat-prompts"><button type="button" data-prompt="目前有哪些重要支撐與壓力？">支撐與壓力</button><button type="button" data-prompt="請解釋最近的進場訊號及風險。">最近訊號</button><button type="button" data-prompt="這張圖的 MA、BOLL 和 ATR 如何解讀？">指標解讀</button></div>
+<div id="chat-messages" class="chat-messages" role="log" aria-live="polite"><div id="chat-placeholder" class="chat-placeholder">選擇上方問題，或在下方輸入自己的問題。</div></div>
+<form id="chat-form" class="chat-form"><label for="chat-input">你的問題</label><textarea id="chat-input" maxlength="2000" placeholder="例如：現在的支撐區在哪裡？" required></textarea><div class="chat-actions"><small>Enter 送出 · Shift+Enter 換行</small><button id="chat-send" type="submit" disabled>送出</button></div></form>
+<p class="chat-notice">問題與圖表摘要會傳送給 OpenAI API；回答可能出錯或延遲，不構成投資建議。對話只保留在目前頁面，重新載入即清除。</p>
 </section>
 <div class="disclaimer"><strong>不構成投資建議</strong>Yahoo Finance 還原日K，可能延遲。盤中訊號以 ? 標示，收盤前可能改變。HTML 為產生當下的快照，重新執行可更新。<br><br>色帶為最新計算的價位區，並非歷史各日的區域；歷史訊號逐根計算，只使用當時可得資料。</div>
 </aside></main>
@@ -79,12 +88,39 @@ const signalDays=[...signalsByDay.keys()].sort();
 let focusSignal=()=>{},selectedSignalDay=signalDays.at(-1),updateMarkers=()=>{};
 function setSidebarTab(name){
  el('tab-overview').closest('aside').scrollTop=0;
- for(const key of ['overview','insights']){const active=key===name;el('tab-'+key).setAttribute('aria-selected',String(active));el('tab-'+key).tabIndex=active?0:-1;el('panel-'+key).hidden=!active;}
+for(const key of ['overview','insights','chat']){const active=key===name;el('tab-'+key).setAttribute('aria-selected',String(active));el('tab-'+key).tabIndex=active?0:-1;el('panel-'+key).hidden=!active;}
 }
-for(const key of ['overview','insights']){
+const sidebarTabs=['overview','insights','chat'];
+for(const key of sidebarTabs){
  const button=el('tab-'+key);button.onclick=()=>setSidebarTab(key);
- button.onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const next=event.key==='Home'?'overview':event.key==='End'?'insights':key==='overview'?'insights':'overview';setSidebarTab(next);el('tab-'+next).focus();}};
+ button.onkeydown=event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const index=sidebarTabs.indexOf(key),next=event.key==='Home'?sidebarTabs[0]:event.key==='End'?sidebarTabs.at(-1):sidebarTabs[(index+(event.key==='ArrowRight'?1:-1)+sidebarTabs.length)%sidebarTabs.length];setSidebarTab(next);el('tab-'+next).focus();}};
 }
+el('chat-symbol').textContent=data.symbol;
+const chatHistory=[];
+const chatStatus=el('chat-status'),chatInput=el('chat-input'),chatSend=el('chat-send'),chatMessages=el('chat-messages');
+function setChatStatus(message,isError=false){chatStatus.textContent=message;chatStatus.classList.toggle('error',isError);}
+function appendChat(role,content){el('chat-placeholder')?.remove();const bubble=text('div',content,'chat-message '+role);chatMessages.append(bubble);chatMessages.scrollTop=chatMessages.scrollHeight;return bubble;}
+if(location.protocol==='file:')setChatStatus('AI 對話需要本機網站：請執行 python server.py，或使用 Docker 啟動。',true);
+else fetch('/api/chat/status').then(response=>response.json()).then(status=>{
+ if(status.configured){setChatStatus(`已連線 · ${status.model} · 圖表 ${data.asof}`);chatSend.disabled=false;}
+ else setChatStatus('尚未設定 OPENAI_API_KEY；請在伺服器設定後重新啟動。',true);
+}).catch(()=>setChatStatus('無法連線到本機網站，請檢查伺服器是否執行。',true));
+document.querySelectorAll('.chat-prompts button').forEach(button=>button.onclick=()=>{chatInput.value=button.dataset.prompt;setSidebarTab('chat');chatInput.focus();});
+chatInput.onkeydown=event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(!chatSend.disabled)el('chat-form').requestSubmit();}};
+el('chat-form').onsubmit=async event=>{
+ event.preventDefault();const question=chatInput.value.trim();if(!question||chatSend.disabled)return;
+ chatSend.disabled=true;chatInput.disabled=true;chatInput.value='';
+ const pending=appendChat('user',question);setChatStatus('正在回答…');
+ const messages=[...chatHistory,{role:'user',content:question}].slice(-12);
+ try{
+  const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:data.symbol,messages})});
+  const result=await response.json();if(!response.ok)throw new Error(result.error||'AI 暫時無法回答。');
+  appendChat('assistant',result.answer);chatHistory.push({role:'user',content:question},{role:'assistant',content:result.answer});
+  if(chatHistory.length>11)chatHistory.splice(0,chatHistory.length-11);
+  setChatStatus(`已連線 · 圖表 ${data.asof}`);
+ }catch(error){pending.remove();chatInput.value=question;setChatStatus(error.message||'AI 暫時無法回答。',true);}
+ finally{chatInput.disabled=false;chatSend.disabled=false;chatInput.focus();}
+};
 function showSignalDay(day,{openTab=true,focusChart=false}={}){
  const items=signalsByDay.get(day)||[];selectedSignalDay=day;el('signal-date').value=day;el('signal-details').replaceChildren();
  if(openTab)setSidebarTab('insights');

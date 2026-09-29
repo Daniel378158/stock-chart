@@ -12,6 +12,12 @@ docker compose up --build -d
 
 打開 `http://127.0.0.1:8765` 搜尋股票。`compose.yaml` 僅映射到主機本機位址，圖表 HTML 保存在 `chart-data` volume；瀏覽器搜尋歷史仍存在瀏覽器 localStorage。關閉服務：`docker compose down`（不刪除圖表資料卷）。若本機已在執行 `python server.py`，先將該服務停止以釋放 8765 埠。
 
+### AI 對話
+
+右側「AI 對話」可詢問目前股票的支撐壓力、近期訊號和指標。這項功能使用 [OpenAI Responses API](https://platform.openai.com/docs/api-reference/responses)，需要自己的 OpenAI API 金鑰；ChatGPT 訂閱不等於 API 額度。將 `.env.example` 複製成 `.env`，在 `OPENAI_API_KEY=` 後填入金鑰，再執行 `docker compose up --build -d`。金鑰只由伺服器讀取，前端不會收到；`.env` 已排除於 Git 和 Docker 映像之外。可以用 `OPENAI_MODEL` 調整模型，預設 `gpt-4.1-mini`。
+
+若直接執行 `python server.py`，請先在該終端的環境變數設定 `OPENAI_API_KEY`。獨立開啟的 `*_chart.html` 沒有伺服器，AI 對話無法使用。問題與目前圖表的精簡摘要會送到 OpenAI API；對話只存在當前頁面，重新整理後清除。回答以圖表快照為依據，沒有即時行情或新聞存取能力，不構成投資建議。
+
 也可不使用 Compose：
 
 ```powershell

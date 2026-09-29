@@ -11,6 +11,7 @@ import threading
 from urllib.parse import quote, unquote, urlsplit
 import webbrowser
 
+import ai_chat
 import chart
 
 
@@ -73,6 +74,10 @@ class StockHandler(BaseHTTPRequestHandler):
             self.respond(403, {"error": "僅接受本機網頁請求。"})
             return
         path = unquote(urlsplit(self.path).path)
+        if path == "/api/chat/status":
+            self.respond(200, {"configured": bool(os.environ.get("OPENAI_API_KEY", "").strip()),
+                               "model": os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")})
+            return
         if path == "/":
             pages = sorted(self.server.directory.glob("*_chart.html"))
             default = self.server.directory / "MU_chart.html"
@@ -109,6 +114,9 @@ class StockHandler(BaseHTTPRequestHandler):
         if not self.trusted_request():
             self.respond(403, {"error": "僅接受本機網頁請求。"})
             return
+        if self.path == "/api/chat":
+            self.chat()
+            return
         if self.path != "/api/search":
             self.respond(404, {"error": "找不到此功能。"})
             return
@@ -135,6 +143,30 @@ class StockHandler(BaseHTTPRequestHandler):
                                "url": f"/{quote(stock.symbol, safe='')}_chart.html"})
         except Exception:
             self.respond(422, {"error": f"無法取得 {symbol} 的日K資料，請確認代碼或稍後重試。"})
+
+    def chat(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if not 0 < length <= 16000 or self.headers.get_content_type() != "application/json":
+                raise ai_chat.ChatError("對話內容格式不正確。", 400)
+            body = json.loads(self.rfile.read(length))
+            if not isinstance(body, dict):
+                raise ai_chat.ChatError("對話內容格式不正確。", 400)
+            symbol = body.get("symbol")
+            if not isinstance(symbol, str) or not re.fullmatch(r"[A-Z0-9][A-Z0-9.^=\-]{0,31}", symbol):
+                raise ai_chat.ChatError("股票代碼格式不正確。", 400)
+            messages = ai_chat.validate_messages(body.get("messages"))
+            target = self.server.directory / f"{symbol}_chart.html"
+            if not target.is_file():
+                raise ai_chat.ChatError("找不到這檔股票的圖表，請重新搜尋。", 404)
+            with self.server.search_lock:
+                payload = saved_payload(target)
+            answer = ai_chat.ask(payload, messages)
+            self.respond(200, {"answer": answer})
+        except ai_chat.ChatError as exc:
+            self.respond(exc.status, {"error": str(exc)})
+        except (ValueError, UnicodeError, json.JSONDecodeError):
+            self.respond(400, {"error": "對話內容格式不正確。"})
 
 
 def main(argv=None):

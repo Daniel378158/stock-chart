@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && mkdir -p /app/charts \
     && chown chart:chart /app/charts
 
-COPY chart.py server.py template.html search.html ./
+COPY ai_chat.py chart.py server.py template.html search.html ./
 
 USER chart
 EXPOSE 8765
