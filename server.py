@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import threading
+import time
 from urllib.parse import quote, unquote, urlsplit
 import webbrowser
 
@@ -35,6 +36,7 @@ class StockServer(ThreadingHTTPServer):
         self.colors = colors
         # yfinance uses shared logging state; serialize downloads and file writes.
         self.search_lock = threading.Lock()
+        self.last_refresh: dict[str, float] = {}
         super().__init__(address, StockHandler)
 
 
@@ -117,6 +119,9 @@ class StockHandler(BaseHTTPRequestHandler):
         if self.path == "/api/chat":
             self.chat()
             return
+        if self.path == "/api/refresh":
+            self.refresh()
+            return
         if self.path != "/api/search":
             self.respond(404, {"error": "找不到此功能。"})
             return
@@ -139,6 +144,7 @@ class StockHandler(BaseHTTPRequestHandler):
                 stock = chart.fetch_stock(symbol, self.server.period)
                 payload = chart.build_payload(stock, self.server.colors)
                 chart.write_html(payload, self.server.directory)
+                self.server.last_refresh[stock.symbol] = time.monotonic()
             self.respond(200, {"symbol": stock.symbol, "name": stock.name,
                                "url": f"/{quote(stock.symbol, safe='')}_chart.html"})
         except Exception:
@@ -167,6 +173,44 @@ class StockHandler(BaseHTTPRequestHandler):
             self.respond(exc.status, {"error": str(exc)})
         except (ValueError, UnicodeError, json.JSONDecodeError):
             self.respond(400, {"error": "對話內容格式不正確。"})
+
+    def refresh(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if not 0 < length <= 512 or self.headers.get_content_type() != "application/json":
+                raise ValueError("更新內容格式不正確。")
+            body = json.loads(self.rfile.read(length))
+            if not isinstance(body, dict):
+                raise ValueError("更新內容格式不正確。")
+            symbol, seen = body.get("symbol"), body.get("generated")
+            if not isinstance(symbol, str) or not re.fullmatch(r"[A-Z0-9][A-Z0-9.^=\-]{0,31}", symbol):
+                raise ValueError("股票代碼格式不正確。")
+            if not isinstance(seen, str) or len(seen) > 80:
+                raise ValueError("圖表版本格式不正確。")
+        except (ValueError, UnicodeError):
+            self.respond(400, {"error": "更新內容格式不正確。"})
+            return
+        target = self.server.directory / f"{symbol}_chart.html"
+        if not target.is_file():
+            self.respond(404, {"error": "找不到這檔股票的圖表，請重新搜尋。"})
+            return
+        try:
+            with self.server.search_lock:
+                old = saved_payload(target)
+                if old["symbol"] != symbol:
+                    raise ValueError("圖表代碼不符。")
+                now = time.monotonic()
+                if now - self.server.last_refresh.get(symbol, float("-inf")) >= 60:
+                    stock = chart.fetch_stock(symbol, self.server.period)
+                    fresh = chart.build_payload(stock, self.server.colors)
+                    if {k: v for k, v in fresh.items() if k != "generated"} != {k: v for k, v in old.items() if k != "generated"}:
+                        chart.write_html(fresh, self.server.directory)
+                        old = fresh
+                    self.server.last_refresh[symbol] = now
+            self.respond(200, {"changed": old["generated"] != seen, "asof": old["asof"],
+                               "generated": old["generated"], "provisional": old["provisional"]})
+        except Exception:
+            self.respond(502, {"error": "暫時無法更新行情，已保留目前圖表。"})
 
 
 def main(argv=None):

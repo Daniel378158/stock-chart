@@ -11,13 +11,17 @@
 .sidebar-tabs{display:flex;gap:4px;padding:4px;background:#0b111b;border:1px solid #263043;border-radius:8px;margin:18px 0 6px;position:sticky;top:0;z-index:4}.sidebar-tabs button{flex:1;border:0;background:transparent;padding:9px 6px;color:#8d9cb2;font-size:12px}.sidebar-tabs button[aria-selected=true]{background:#253044;color:#f1e2bf;box-shadow:0 1px 4px #0003}.sidebar-panel[hidden]{display:none}.signal-key{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:3px 0 9px;color:#8d9cb2;font-size:10px}.signal-key b{font-size:12px;margin-right:4px}.signal-key .pullback{color:#65b8ef}.signal-key .retest{color:#ffca67}.signal-key .combined{color:#bf9aff}.signal-tooltip{display:none;position:absolute;z-index:5;pointer-events:none;max-width:240px;background:#162132f2;border:1px solid #43526b;border-radius:6px;padding:8px 11px;box-shadow:0 5px 18px #0005;color:#e1e9f5;font-size:11px;white-space:pre-line}.signal button.view-signal{border:0;background:none;color:#aebfde;font-size:10px;padding:6px 0 0;display:block;width:100%;text-align:left}.signal button.view-signal:hover{color:#ffca67}.signal-date-label{display:block;color:#8796ad;font-size:11px;margin:14px 0 6px}.signal-date-select{width:100%;min-width:0;border:1px solid #35425a;border-radius:6px;padding:9px;background:#131d2c;color:#e2eaf5;font:12px system-ui}.signal-selection-note{color:#8393aa;font-size:11px;line-height:1.7;margin:10px 0 14px}.signal-detail-card{border:1px solid #334158;border-radius:8px;background:#151e2c;margin:10px 0;padding:13px}.signal-detail-card h3{font-size:13px;margin:0 0 3px;color:#edcf93}.signal-detail-card .signal-grid{grid-template-columns:1fr 1fr;gap:12px;margin-top:13px}.signal-detail-card .signal-grid b{font-size:17px}.signal-detail-card .signal-grid small{font-size:10px}.signal-facts{margin-top:13px;border-top:1px solid #2a3548;padding-top:9px;font-size:11px;color:#96a7bf}.signal-facts div{display:flex;justify-content:space-between;gap:8px;margin:5px 0}.signal-facts b{color:#d1dcec;font-weight:400;text-align:right}.signal-note{color:#96a7bf;font-size:11px;line-height:1.75;margin:9px 0 0}.guide{border-top:1px solid #2a3548;padding:12px 0;margin-top:10px}.guide summary{cursor:pointer;color:#c9d5e8;font-size:12px;font-weight:600}.guide svg{width:100%;height:auto;margin-top:10px;display:block;background:#0c131e;border:1px solid #283247;border-radius:7px}.guide p{font-size:11px;color:#a0aec3;line-height:1.8;margin:8px 0}.guide ol{padding-left:19px;color:#a0aec3;font-size:11px;line-height:1.8}.guide-caption{font-size:10px!important;color:#6f819b!important}.signal-panel-title{font-size:14px;margin:17px 0 0}.signal-panel-intro{color:#8fa0b8;font-size:11px;line-height:1.75;margin:6px 0}.signal-risk-note{color:#8091aa;font-size:10px;line-height:1.8}
 .chat-intro{color:#9aabc2;font-size:11px;line-height:1.7;margin:8px 0 12px}.chat-status{font-size:11px;color:#a4b3c8;border:1px solid #2c3a50;background:#141e2d;border-radius:6px;padding:8px 10px;margin-bottom:12px}.chat-status.error{display:block;position:static;margin:0 0 12px;padding:8px 10px}.chat-prompts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.chat-prompts button{font-size:11px;padding:5px 8px;border-radius:15px}.chat-messages{height:min(46vh,460px);min-height:250px;overflow:auto;background:#0c131e;border:1px solid #263449;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px}.chat-message{max-width:92%;padding:9px 11px;border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.65}.chat-message.user{align-self:flex-end;background:#263b51;color:#edf5ff}.chat-message.assistant{align-self:flex-start;background:#1b2635;color:#dce7f5}.chat-placeholder{color:#7e90a8;font-size:11px;line-height:1.7}.chat-form{margin-top:12px}.chat-form label{font-size:11px;color:#9aabc2;display:block;margin-bottom:5px}.chat-form textarea{display:block;width:100%;min-height:74px;max-height:180px;resize:vertical;border:1px solid #394960;border-radius:7px;background:#101a29;color:#e5edf8;padding:9px 10px;font:12px/1.5 system-ui,"Microsoft JhengHei",sans-serif}.chat-form textarea:focus{outline:2px solid #668bc0;outline-offset:1px}.chat-actions{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px}.chat-actions small{color:#7d8da4;font-size:10px}.chat-actions button{background:#36557b;color:#fff;border-color:#5379a8}.chat-actions button:disabled{opacity:.5;cursor:not-allowed}.chat-notice{margin:12px 0 0;color:#8192a9;font-size:10px;line-height:1.7}
 </style>
+<style>
+.refresh-status{color:#899bb2;font-size:11px;white-space:nowrap}.refresh-status.warn{color:#ffca67}.refresh-controls{align-items:center}.refresh-controls button:disabled{opacity:.6;cursor:wait}
+@media(max-width:720px){.refresh-status{white-space:normal}}
+</style>
 </head>
 <body>
 <header><div><div class="brand">MARKET / DAILY</div><h1 id="heading"></h1></div><div class="status"><strong id="market"></strong><span id="asof"></span></div></header>
 __SEARCH__
 <div id="error" class="error" role="alert"></div>
 <main><section class="workspace">
-<div class="toolbar"><div class="controls"><span class="period">日 K</span><button id="ma-toggle" aria-pressed="true">MA</button><button id="boll-toggle" aria-pressed="true">BOLL</button><button id="sr-toggle" aria-pressed="true">支撐 / 壓力</button><button id="signal-toggle" aria-pressed="true">訊號</button></div><div class="controls"><button id="recent">近 150 根</button><button id="all">全部</button></div></div>
+<div class="toolbar"><div class="controls"><span class="period">日 K</span><button id="ma-toggle" aria-pressed="true">MA</button><button id="boll-toggle" aria-pressed="true">BOLL</button><button id="sr-toggle" aria-pressed="true">支撐 / 壓力</button><button id="signal-toggle" aria-pressed="true">訊號</button></div><div class="controls refresh-controls"><span id="refresh-status" class="refresh-status" role="status">每 2 分鐘檢查行情</span><button id="refresh-now" type="button">立即更新</button><button id="recent">近 150 根</button><button id="all">全部</button></div></div>
 <div id="ohlc" class="ohlc"></div><div id="legend" class="legend"></div>
 <div class="signal-key"><span><b class="pullback">●</b>拉回</span><span><b class="retest">▲</b>突破回測</span><span><b class="combined">■</b>同日多類</span><span>移入查看 · 點選解讀</span></div>
 <div class="plot"><div id="price-chart" class="chart"></div><div id="signal-tooltip" class="signal-tooltip"></div></div>
@@ -68,7 +72,8 @@ const signed = (v, digits=2) => (v >= 0 ? '+' : '') + v.toFixed(digits);
 const text = (tag, content, cls) => { const node=document.createElement(tag); node.textContent=content; if(cls) node.className=cls; return node; };
 el('heading').append(text('b',data.symbol),text('span',data.name));
 el('market').textContent = `${data.market === 'tw' ? '台灣市場' : '美國市場'} · ${data.currency} · 還原股價`;
-el('asof').textContent = `${data.asof} · ${data.provisional ? '盤中未確認' : '日K快照'}`;
+const fetchedAt=new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(data.generated));
+el('asof').textContent = `${data.asof} · ${data.provisional ? '盤中未確認' : '日K快照'} · 台北 ${fetchedAt} 抓取`;
 el('currency').textContent=data.currency;
 el('quote').textContent=fmt(data.current);
 const direction=data.change >= 0 ? data.colors.up : data.colors.down;
@@ -86,7 +91,10 @@ const signalsByDay=new Map();
 for(const signal of data.signals){if(!signalsByDay.has(signal.time))signalsByDay.set(signal.time,[]);signalsByDay.get(signal.time).push(signal);}
 const signalDays=[...signalsByDay.keys()].sort();
 let focusSignal=()=>{},selectedSignalDay=signalDays.at(-1),updateMarkers=()=>{};
+let activeSidebarTab='overview';
 function setSidebarTab(name){
+ activeSidebarTab=name;
+ try{sessionStorage.setItem('stock-chart.tab.'+data.symbol,name);}catch{}
  el('tab-overview').closest('aside').scrollTop=0;
 for(const key of ['overview','insights','chat']){const active=key===name;el('tab-'+key).setAttribute('aria-selected',String(active));el('tab-'+key).tabIndex=active?0:-1;el('panel-'+key).hidden=!active;}
 }
@@ -148,6 +156,30 @@ for(const day of [...signalDays].reverse()){const option=document.createElement(
 if(!signalDays.length){el('signal-date').append(text('option','暫無訊號'));el('signal-date').disabled=true;}
 el('signal-date').onchange=()=>showSignalDay(el('signal-date').value,{focusChart:true});
 showSignalDay(selectedSignalDay,{openTab:false});
+try{const savedTab=sessionStorage.getItem('stock-chart.tab.'+data.symbol);if(sidebarTabs.includes(savedTab))setSidebarTab(savedTab);}catch{}
+const refreshButton=el('refresh-now'),refreshStatus=el('refresh-status');
+let refreshBusy=false,updateReady=false;
+function refreshMessage(message,warn=false){refreshStatus.textContent=message;refreshStatus.classList.toggle('warn',warn);}
+async function checkForNewBars(manual=false){
+ if(updateReady){location.reload();return;}
+ if(refreshBusy||(!manual&&document.visibilityState==='hidden'))return;
+ if(location.protocol==='file:'){refreshMessage('本機 HTML 快照；請用網站更新',true);return;}
+ refreshBusy=true;refreshButton.disabled=true;refreshMessage('正在檢查行情…');
+ try{
+  const response=await fetch('/api/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:data.symbol,generated:data.generated})});
+  const result=await response.json();if(!response.ok)throw new Error(result.error||'更新失敗');
+  if(result.changed){
+   if(activeSidebarTab==='chat'&&(chatHistory.length||chatInput.value.trim())){
+    updateReady=true;refreshButton.textContent='載入新行情';refreshMessage(`${result.asof} 有新資料，點按載入`,true);
+   }else location.reload();
+   return;
+  }
+  refreshMessage(`已檢查 ${new Intl.DateTimeFormat('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date())} · 來源尚無新資料`);
+ }catch(error){refreshMessage(error.message||'更新失敗，保留目前圖表',true);}
+ finally{refreshBusy=false;refreshButton.disabled=false;}
+}
+refreshButton.onclick=()=>checkForNewBars(true);
+checkForNewBars();setInterval(()=>checkForNewBars(),120000);
 for(const s of data.signals.slice(-6).reverse()){
  const card=text('div','','signal'),head=text('div','','signal-head');
  head.append(text('strong',s.kind+(s.provisional?' ?':'')),text('time',s.time));card.append(head);

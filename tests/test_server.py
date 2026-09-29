@@ -8,7 +8,7 @@ import pytest
 
 import chart
 import ai_chat
-from server import StockServer
+from server import StockServer, saved_payload
 
 
 @pytest.fixture
@@ -159,3 +159,47 @@ def test_cross_origin_chat_rejected(web_server):
     code, _, _ = request(web_server, "POST", "/api/chat", body,
                          {"Content-Type": "application/json", "Origin": "https://unrelated.example"})
     assert code == 403
+
+
+def test_refresh_updates_changed_bar_and_skips_duplicate_fetch(web_server, monkeypatch):
+    original = chart.build_payload(stock())
+    chart.write_html(original, web_server.directory)
+    updated = stock()
+    updated.frame.loc[:, "Close"] = 102.0
+    fetch = Mock(return_value=updated)
+    monkeypatch.setattr(chart, "fetch_stock", fetch)
+    body = json.dumps({"symbol": "2330.TW", "generated": original["generated"]})
+    headers = {"Content-Type": "application/json"}
+    code, result, _ = request(web_server, "POST", "/api/refresh", body, headers)
+    first = json.loads(result)
+    assert code == 200 and first["changed"] is True
+    assert first["asof"] == "2023-01-03"
+    assert first["generated"] != original["generated"]
+    assert saved_payload(web_server.directory / "2330.TW_chart.html")["current"] == 102.0
+    code, result, _ = request(web_server, "POST", "/api/refresh", body, headers)
+    assert code == 200 and json.loads(result)["changed"] is True
+    fetch.assert_called_once_with("2330.TW", "2y")
+
+
+def test_refresh_keeps_identical_chart_and_handles_fetch_failure(web_server, monkeypatch):
+    original = chart.build_payload(stock())
+    target = chart.write_html(original, web_server.directory)
+    fetch = Mock(return_value=stock())
+    monkeypatch.setattr(chart, "fetch_stock", fetch)
+    body = json.dumps({"symbol": "2330.TW", "generated": original["generated"]})
+    headers = {"Content-Type": "application/json"}
+    code, result, _ = request(web_server, "POST", "/api/refresh", body, headers)
+    assert code == 200 and json.loads(result)["changed"] is False
+    assert saved_payload(target)["generated"] == original["generated"]
+    web_server.last_refresh.clear()
+    monkeypatch.setattr(chart, "fetch_stock", Mock(side_effect=ValueError("Yahoo unavailable")))
+    code, result, _ = request(web_server, "POST", "/api/refresh", body, headers)
+    assert code == 502 and "保留目前圖表" in json.loads(result)["error"]
+    assert saved_payload(target)["current"] == original["current"]
+
+
+def test_bad_refresh_request_is_rejected(web_server):
+    headers = {"Content-Type": "application/json"}
+    for body in ['{"symbol":"../bad","generated":"x"}', '{"symbol":"MU"}', '[]']:
+        code, _, _ = request(web_server, "POST", "/api/refresh", body, headers)
+        assert code == 400
