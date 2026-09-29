@@ -77,6 +77,16 @@ def test_cross_origin_post_rejected(web_server):
     assert search(web_server, "MU", {"Origin": "https://unrelated.example"})[0] == 403
 
 
+def test_docker_published_port_accepted(web_server):
+    code, page, _ = request(web_server, "GET", "/", headers={"Host": "127.0.0.1:18765"})
+    assert code == 200 and 'id="stock-search-form"' in page
+
+
+def test_non_loopback_host_rejected(web_server):
+    code, _, _ = request(web_server, "GET", "/", headers={"Host": "example.com:18765"})
+    assert code == 403
+
+
 @pytest.mark.parametrize("path", ["/chart.py", "/.venv/pyvenv.cfg", "/../README.md", "/%2e%2e/chart.py"])
 def test_source_files_and_traversal_are_not_served(web_server, path):
     assert request(web_server, "GET", path)[0] == 404

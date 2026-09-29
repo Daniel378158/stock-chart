@@ -60,12 +60,13 @@ class StockHandler(BaseHTTPRequestHandler):
             pass
 
     def trusted_request(self):
-        port = self.server.server_address[1]
-        hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
-        if self.headers.get("Host") not in hosts:
+        # Docker may publish the container on a different host port.
+        host = self.headers.get("Host", "")
+        match = re.fullmatch(r"(127\.0\.0\.1|localhost):([1-9][0-9]{0,4})", host)
+        if not match or int(match.group(2)) > 65535:
             return False
         origin = self.headers.get("Origin")
-        return origin is None or origin in {f"http://{host}" for host in hosts}
+        return origin is None or origin == f"http://{host}"
 
     def do_GET(self):
         if not self.trusted_request():
