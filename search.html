@@ -54,7 +54,8 @@
    if(!response.headers.get('content-type')?.includes('application/json'))throw new Error('搜尋服務尚未啟動，請使用 python server.py 開啟此網站。');
    const result=await response.json();
    if(!response.ok)throw new Error(result.error||'搜尋失敗，請稍後重試。');
-   if(!valid(result.symbol)||result.url!==`/${encodeURIComponent(result.symbol)}_chart.html`)throw new Error('搜尋服務回傳格式不正確。');
+   const currentUrl=`/chart/${encodeURIComponent(result.symbol)}`,legacyUrl=`/${encodeURIComponent(result.symbol)}_chart.html`;
+   if(!valid(result.symbol)||![currentUrl,legacyUrl].includes(result.url))throw new Error('搜尋服務回傳格式不正確。');
    history=[{symbol:result.symbol,name:result.name||'',searchedAt:new Date().toISOString()},...history.filter(x=>x.symbol!==result.symbol)].slice(0,LIMIT);
    persist();status(storageAvailable?`已找到 ${result.symbol}，正在開啟圖表…`:'已找到股票；瀏覽器無法保存紀錄，正在開啟圖表…');
    location.assign(result.url);

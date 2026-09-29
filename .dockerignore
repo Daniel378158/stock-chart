@@ -4,6 +4,7 @@ __pycache__
 .pytest_cache
 tests
 *_chart.html
+charts.sqlite3*
 *.png
 *credential*
 *credntial*

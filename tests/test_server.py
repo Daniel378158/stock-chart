@@ -8,7 +8,8 @@ import pytest
 
 import chart
 import ai_chat
-from server import StockServer, saved_payload
+from chart_store import ChartStore
+from server import StockServer
 
 
 @pytest.fixture
@@ -49,9 +50,10 @@ def test_search_creates_normalized_chart_and_updated_ui(web_server, monkeypatch)
     code, result, _ = search(web_server, " 2330 ")
     assert code == 200
     body = json.loads(result)
-    assert body == {"symbol": "2330.TW", "name": "Taiwan Semiconductor", "url": "/2330.TW_chart.html"}
+    assert body == {"symbol": "2330.TW", "name": "Taiwan Semiconductor", "url": "/chart/2330.TW"}
     fetch.assert_called_once_with("2330", "2y")
-    assert (web_server.directory / "2330.TW_chart.html").is_file()
+    assert not list(web_server.directory.glob("*_chart.html"))
+    assert (web_server.directory / "charts.sqlite3").is_file()
     code, page, headers = request(web_server, "GET", body["url"])
     assert code == 200 and headers["Content-Type"].startswith("text/html")
     assert 'id="stock-search-form"' in page and 'id="search-history"' in page
@@ -59,13 +61,12 @@ def test_search_creates_normalized_chart_and_updated_ui(web_server, monkeypatch)
 
 
 def test_missing_symbol_keeps_existing_charts(web_server, monkeypatch):
-    chart.write_html(chart.build_payload(stock()), web_server.directory)
-    path = web_server.directory / "2330.TW_chart.html"
-    before = path.read_bytes()
+    web_server.store.save(chart.build_payload(stock()))
+    before = web_server.store.get("2330.TW")
     monkeypatch.setattr(chart, "fetch_stock", Mock(side_effect=ValueError("not found")))
     code, body, _ = search(web_server, "INVALIDXYZ")
     assert code == 422 and "INVALIDXYZ" in json.loads(body)["error"]
-    assert path.read_bytes() == before
+    assert web_server.store.get("2330.TW") == before
 
 
 @pytest.mark.parametrize("body", ['{"symbol":"../bad"}', '{"symbol":42}', '[]', '{'])
@@ -88,20 +89,40 @@ def test_non_loopback_host_rejected(web_server):
     assert code == 403
 
 
-@pytest.mark.parametrize("path", ["/chart.py", "/.venv/pyvenv.cfg", "/../README.md", "/%2e%2e/chart.py"])
+@pytest.mark.parametrize("path", ["/chart.py", "/charts.sqlite3", "/.env", "/.venv/pyvenv.cfg", "/../README.md", "/%2e%2e/chart.py"])
 def test_source_files_and_traversal_are_not_served(web_server, path):
     assert request(web_server, "GET", path)[0] == 404
 
 
 def test_first_run_has_search_even_without_saved_charts(web_server):
     code, page, _ = request(web_server, "GET", "/")
-    assert code == 200 and 'id="stock-search-form"' in page
+    assert code == 200 and 'id="stock-search-form"' in page and "快速開始" in page
 
 
-def test_home_redirects_to_existing_chart(web_server):
-    chart.write_html(chart.build_payload(stock()), web_server.directory)
-    code, _, headers = request(web_server, "GET", "/")
-    assert code == 302 and headers["Location"] == "/2330.TW_chart.html"
+def test_home_lists_existing_chart(web_server):
+    web_server.store.save(chart.build_payload(stock()))
+    code, page, _ = request(web_server, "GET", "/")
+    assert code == 200 and 'href="/chart/2330.TW"' in page
+    assert "Taiwan Semiconductor" in page
+
+
+def test_home_escapes_saved_company_name(web_server):
+    payload = chart.build_payload(stock())
+    payload["name"] = "<script>alert(1)</script>"
+    web_server.store.save(payload)
+    code, page, _ = request(web_server, "GET", "/")
+    assert code == 200 and "&lt;script&gt;" in page
+    assert "<script>alert(1)</script>" not in page
+
+
+def test_database_persists_one_row_per_symbol(web_server):
+    payload = chart.build_payload(stock())
+    web_server.store.save(payload)
+    payload["current"] = 102.0
+    web_server.store.save(payload)
+    reopened = ChartStore(web_server.directory)
+    assert reopened.get("2330.TW")["current"] == 102.0
+    assert len(reopened.recent()) == 1
 
 
 def test_same_origin_request_with_market_options(web_server, monkeypatch):
@@ -113,15 +134,14 @@ def test_same_origin_request_with_market_options(web_server, monkeypatch):
     code, _, _ = search(web_server, "2330", {"Origin": f"http://127.0.0.1:{port}"})
     assert code == 200
     fetch.assert_called_once_with("2330", "5y")
-    from server import saved_payload
-    payload = saved_payload(web_server.directory / "2330.TW_chart.html")
+    payload = web_server.store.get("2330.TW")
     assert payload["colors"]["mode"] == "us"
 
 
 def test_chat_page_and_status_without_key(web_server, monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    chart.write_html(chart.build_payload(stock()), web_server.directory)
-    code, page, _ = request(web_server, "GET", "/2330.TW_chart.html")
+    web_server.store.save(chart.build_payload(stock()))
+    code, page, _ = request(web_server, "GET", "/chart/2330.TW")
     assert code == 200 and 'id="tab-chat"' in page and 'id="chat-form"' in page
     code, result, _ = request(web_server, "GET", "/api/chat/status")
     assert code == 200 and json.loads(result)["configured"] is False
@@ -131,7 +151,7 @@ def test_chat_page_and_status_without_key(web_server, monkeypatch):
 
 
 def test_chat_uses_server_chart_not_client_supplied_numbers(web_server, monkeypatch):
-    chart.write_html(chart.build_payload(stock()), web_server.directory)
+    web_server.store.save(chart.build_payload(stock()))
     ask = Mock(return_value="依 2023-01-03 的圖表快照分析。")
     monkeypatch.setattr(ai_chat, "ask", ask)
     body = json.dumps({"symbol": "2330.TW", "current": 999999,
@@ -163,7 +183,7 @@ def test_cross_origin_chat_rejected(web_server):
 
 def test_refresh_updates_changed_bar_and_skips_duplicate_fetch(web_server, monkeypatch):
     original = chart.build_payload(stock())
-    chart.write_html(original, web_server.directory)
+    web_server.store.save(original)
     updated = stock()
     updated.frame.loc[:, "Close"] = 102.0
     fetch = Mock(return_value=updated)
@@ -175,7 +195,7 @@ def test_refresh_updates_changed_bar_and_skips_duplicate_fetch(web_server, monke
     assert code == 200 and first["changed"] is True
     assert first["asof"] == "2023-01-03"
     assert first["generated"] != original["generated"]
-    assert saved_payload(web_server.directory / "2330.TW_chart.html")["current"] == 102.0
+    assert web_server.store.get("2330.TW")["current"] == 102.0
     code, result, _ = request(web_server, "POST", "/api/refresh", body, headers)
     assert code == 200 and json.loads(result)["changed"] is True
     fetch.assert_called_once_with("2330.TW", "2y")
@@ -183,19 +203,26 @@ def test_refresh_updates_changed_bar_and_skips_duplicate_fetch(web_server, monke
 
 def test_refresh_keeps_identical_chart_and_handles_fetch_failure(web_server, monkeypatch):
     original = chart.build_payload(stock())
-    target = chart.write_html(original, web_server.directory)
+    web_server.store.save(original)
     fetch = Mock(return_value=stock())
     monkeypatch.setattr(chart, "fetch_stock", fetch)
     body = json.dumps({"symbol": "2330.TW", "generated": original["generated"]})
     headers = {"Content-Type": "application/json"}
     code, result, _ = request(web_server, "POST", "/api/refresh", body, headers)
     assert code == 200 and json.loads(result)["changed"] is False
-    assert saved_payload(target)["generated"] == original["generated"]
+    assert web_server.store.get("2330.TW")["generated"] == original["generated"]
     web_server.last_refresh.clear()
     monkeypatch.setattr(chart, "fetch_stock", Mock(side_effect=ValueError("Yahoo unavailable")))
     code, result, _ = request(web_server, "POST", "/api/refresh", body, headers)
     assert code == 502 and "保留目前圖表" in json.loads(result)["error"]
-    assert saved_payload(target)["current"] == original["current"]
+    assert web_server.store.get("2330.TW")["current"] == original["current"]
+
+
+def test_legacy_html_link_migrates_into_single_store(web_server):
+    chart.write_html(chart.build_payload(stock()), web_server.directory)
+    code, _, headers = request(web_server, "GET", "/2330.TW_chart.html")
+    assert code == 302 and headers["Location"] == "/chart/2330.TW"
+    assert web_server.store.get("2330.TW")["symbol"] == "2330.TW"
 
 
 def test_bad_refresh_request_is_rejected(web_server):

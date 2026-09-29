@@ -2,6 +2,7 @@
 __pycache__/
 .pytest_cache/
 *_chart.html
+charts.sqlite3*
 *.png
 .env
 *credential*

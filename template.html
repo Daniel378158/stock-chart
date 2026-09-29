@@ -13,11 +13,12 @@
 </style>
 <style>
 .refresh-status{color:#899bb2;font-size:11px;white-space:nowrap}.refresh-status.warn{color:#ffca67}.refresh-controls{align-items:center}.refresh-controls button:disabled{opacity:.6;cursor:wait}
+.home-link{color:#f2d28e;text-decoration:none}.home-link:hover{text-decoration:underline}
 @media(max-width:720px){.refresh-status{white-space:normal}}
 </style>
 </head>
 <body>
-<header><div><div class="brand">MARKET / DAILY</div><h1 id="heading"></h1></div><div class="status"><strong id="market"></strong><span id="asof"></span></div></header>
+<header><div><div class="brand"><a id="home-link" class="home-link" href="/">← 首頁</a> · MARKET / DAILY</div><h1 id="heading"></h1></div><div class="status"><strong id="market"></strong><span id="asof"></span></div></header>
 __SEARCH__
 <div id="error" class="error" role="alert"></div>
 <main><section class="workspace">
@@ -58,7 +59,7 @@ __SEARCH__
 <form id="chat-form" class="chat-form"><label for="chat-input">你的問題</label><textarea id="chat-input" maxlength="2000" placeholder="例如：現在的支撐區在哪裡？" required></textarea><div class="chat-actions"><small>Enter 送出 · Shift+Enter 換行</small><button id="chat-send" type="submit" disabled>送出</button></div></form>
 <p class="chat-notice">問題與圖表摘要會傳送給 OpenAI API；回答可能出錯或延遲，不構成投資建議。對話只保留在目前頁面，重新載入即清除。</p>
 </section>
-<div class="disclaimer"><strong>不構成投資建議</strong>Yahoo Finance 還原日K，可能延遲。盤中訊號以 ? 標示，收盤前可能改變。HTML 為產生當下的快照，重新執行可更新。<br><br>色帶為最新計算的價位區，並非歷史各日的區域；歷史訊號逐根計算，只使用當時可得資料。</div>
+<div class="disclaimer"><strong>不構成投資建議</strong>Yahoo Finance 還原日K，可能延遲。盤中訊號以 ? 標示，收盤前可能改變。網站圖表可按「立即更新」；CLI 匯出的 HTML 為快照，重新執行可更新。<br><br>色帶為最新計算的價位區，並非歷史各日的區域；歷史訊號逐根計算，只使用當時可得資料。</div>
 </aside></main>
 <script id="chart-data" type="application/json">__PAYLOAD__</script>
 <script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -67,6 +68,7 @@ __SEARCH__
 'use strict';
 const data = JSON.parse(document.getElementById('chart-data').textContent);
 const el = id => document.getElementById(id);
+if(location.protocol==='file:')el('home-link').hidden=true;
 const fmt = v => v == null ? '—' : Number(v).toFixed(data.market === 'tw' && v >= 100 ? 1 : 2);
 const signed = (v, digits=2) => (v >= 0 ? '+' : '') + v.toFixed(digits);
 const text = (tag, content, cls) => { const node=document.createElement(tag); node.textContent=content; if(cls) node.className=cls; return node; };

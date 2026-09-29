@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import html
 import json
 import os
 from pathlib import Path
@@ -14,6 +15,7 @@ import webbrowser
 
 import ai_chat
 import chart
+from chart_store import ChartStore
 
 
 ROOT = Path(__file__).resolve().parent
@@ -32,8 +34,20 @@ class StockServer(ThreadingHTTPServer):
 
     def __init__(self, address, directory=ROOT, period="2y", colors=None):
         self.directory = Path(directory).resolve()
+        self.directory.mkdir(parents=True, exist_ok=True)
         self.period = period
         self.colors = colors
+        self.store = ChartStore(self.directory)
+        # Keep existing standalone exports readable after switching to one database.
+        for path in self.directory.glob("*_chart.html"):
+            symbol = path.name.removesuffix("_chart.html")
+            if self.store.get(symbol) is None:
+                try:
+                    payload = saved_payload(path)
+                    if payload.get("symbol") == symbol:
+                        self.store.save(payload)
+                except (ValueError, KeyError, OSError):
+                    pass
         # yfinance uses shared logging state; serialize downloads and file writes.
         self.search_lock = threading.Lock()
         self.last_refresh: dict[str, float] = {}
@@ -81,36 +95,54 @@ class StockHandler(BaseHTTPRequestHandler):
                                "model": os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")})
             return
         if path == "/":
-            pages = sorted(self.server.directory.glob("*_chart.html"))
-            default = self.server.directory / "MU_chart.html"
-            if default.exists() or pages:
-                self.send_response(302)
-                self.send_header("Location", "/" + quote((default if default.exists() else pages[0]).name))
-                self.send_header("Content-Length", "0")
-                self.end_headers()
-            else:
-                search = (ROOT / "search.html").read_text(encoding="utf-8")
-                self.respond(200, '<!doctype html><html lang="zh-Hant"><meta charset="utf-8">'
-                             '<meta name="viewport" content="width=device-width,initial-scale=1">'
-                             '<title>股票搜尋</title><body style="margin:0;background:#0b0f16;color:#dce4f0">'
-                             '<h1 style="font:24px system-ui;padding:20px 26px">台美股日K</h1>'
-                             + search + '</body></html>', "text/html; charset=utf-8")
+            self.home()
             return
-        # Serve only generated charts, never Python source or the virtual environment.
+        if re.fullmatch(r"/chart/[A-Z0-9][A-Z0-9.^=\-]{0,31}", path):
+            symbol = path[len("/chart/"):]
+            with self.server.search_lock:
+                payload = self.server.store.get(symbol)
+            if payload is None:
+                self.respond(404, {"error": "找不到這檔股票，請回首頁搜尋。"})
+            else:
+                self.respond(200, chart.render_html(payload), "text/html; charset=utf-8")
+            return
+        # Old bookmarks continue to work; new web searches never create HTML files.
         if not re.fullmatch(r"/[A-Z0-9][A-Z0-9.^=\-]{0,31}_chart\.html", path):
             self.respond(404, {"error": "找不到此頁面。"})
             return
-        target = self.server.directory / path[1:]
-        if not target.is_file() or target.resolve().parent != self.server.directory:
-            self.respond(404, {"error": "圖表尚未產生，請先搜尋股票代碼。"})
+        symbol = path[1:].removesuffix("_chart.html")
+        with self.server.search_lock:
+            payload = self.server.store.get(symbol)
+            target = self.server.directory / path[1:]
+            if payload is None and target.is_file():
+                try:
+                    payload = saved_payload(target)
+                    if payload["symbol"] == symbol:
+                        self.server.store.save(payload)
+                except (ValueError, KeyError, OSError):
+                    payload = None
+        if payload is None:
+            self.respond(404, {"error": "找不到這檔股票，請回首頁搜尋。"})
             return
-        try:
-            with self.server.search_lock:
-                payload = saved_payload(target)
-            # Existing saved charts receive the latest UI without a new download.
-            self.respond(200, chart.render_html(payload), "text/html; charset=utf-8")
-        except (ValueError, KeyError, OSError) as exc:
-            self.respond(500, {"error": str(exc)})
+        self.send_response(302)
+        self.send_header("Location", "/chart/" + quote(symbol, safe=""))
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def home(self):
+        cards = []
+        for item in self.server.store.recent():
+            symbol = html.escape(item["symbol"])
+            name = html.escape(item["name"] or ("台灣股票" if item["market"] == "tw" else "美國股票"))
+            cards.append('<a class="saved-card" href="/chart/' + quote(item["symbol"], safe="") + '">'
+                         '<span class="saved-symbol">' + symbol + '</span><span class="saved-name">' + name + '</span>'
+                         '<span class="saved-meta">' + html.escape(item["asof"]) + ' · '
+                         + ("TWD" if item["market"] == "tw" else "USD") + ' '
+                         + f'{item["current"]:.2f}' + '</span></a>')
+        recent = "".join(cards) or '<p class="home-empty">還沒有圖表。從上方搜尋一檔股票開始。</p>'
+        page = (ROOT / "home.html").read_text(encoding="utf-8")
+        page = page.replace("__SEARCH__", (ROOT / "search.html").read_text(encoding="utf-8"))
+        self.respond(200, page.replace("__RECENT__", recent), "text/html; charset=utf-8")
 
     def do_POST(self):
         if not self.trusted_request():
@@ -143,10 +175,10 @@ class StockHandler(BaseHTTPRequestHandler):
             with self.server.search_lock:
                 stock = chart.fetch_stock(symbol, self.server.period)
                 payload = chart.build_payload(stock, self.server.colors)
-                chart.write_html(payload, self.server.directory)
+                self.server.store.save(payload)
                 self.server.last_refresh[stock.symbol] = time.monotonic()
             self.respond(200, {"symbol": stock.symbol, "name": stock.name,
-                               "url": f"/{quote(stock.symbol, safe='')}_chart.html"})
+                               "url": f"/chart/{quote(stock.symbol, safe='')}"})
         except Exception:
             self.respond(422, {"error": f"無法取得 {symbol} 的日K資料，請確認代碼或稍後重試。"})
 
@@ -162,11 +194,10 @@ class StockHandler(BaseHTTPRequestHandler):
             if not isinstance(symbol, str) or not re.fullmatch(r"[A-Z0-9][A-Z0-9.^=\-]{0,31}", symbol):
                 raise ai_chat.ChatError("股票代碼格式不正確。", 400)
             messages = ai_chat.validate_messages(body.get("messages"))
-            target = self.server.directory / f"{symbol}_chart.html"
-            if not target.is_file():
-                raise ai_chat.ChatError("找不到這檔股票的圖表，請重新搜尋。", 404)
             with self.server.search_lock:
-                payload = saved_payload(target)
+                payload = self.server.store.get(symbol)
+            if payload is None:
+                raise ai_chat.ChatError("找不到這檔股票的圖表，請重新搜尋。", 404)
             answer = ai_chat.ask(payload, messages)
             self.respond(200, {"answer": answer})
         except ai_chat.ChatError as exc:
@@ -190,13 +221,12 @@ class StockHandler(BaseHTTPRequestHandler):
         except (ValueError, UnicodeError):
             self.respond(400, {"error": "更新內容格式不正確。"})
             return
-        target = self.server.directory / f"{symbol}_chart.html"
-        if not target.is_file():
-            self.respond(404, {"error": "找不到這檔股票的圖表，請重新搜尋。"})
-            return
         try:
             with self.server.search_lock:
-                old = saved_payload(target)
+                old = self.server.store.get(symbol)
+                if old is None:
+                    self.respond(404, {"error": "找不到這檔股票的圖表，請重新搜尋。"})
+                    return
                 if old["symbol"] != symbol:
                     raise ValueError("圖表代碼不符。")
                 now = time.monotonic()
@@ -204,7 +234,7 @@ class StockHandler(BaseHTTPRequestHandler):
                     stock = chart.fetch_stock(symbol, self.server.period)
                     fresh = chart.build_payload(stock, self.server.colors)
                     if {k: v for k, v in fresh.items() if k != "generated"} != {k: v for k, v in old.items() if k != "generated"}:
-                        chart.write_html(fresh, self.server.directory)
+                        self.server.store.save(fresh)
                         old = fresh
                     self.server.last_refresh[symbol] = now
             self.respond(200, {"changed": old["generated"] != seen, "asof": old["asof"],
