@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*_chart.html
+*.png
+.env
+*credential*
+*credntial*
+*.pem
+*.key

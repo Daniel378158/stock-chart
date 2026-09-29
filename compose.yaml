@@ -1,0 +1,11 @@
+services:
+  stock-chart:
+    build: .
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - chart-data:/app/charts
+    restart: unless-stopped
+
+volumes:
+  chart-data:
