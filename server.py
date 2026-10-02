@@ -15,6 +15,7 @@ import webbrowser
 
 import ai_chat
 import chart
+import screen
 from chart_store import ChartStore
 
 
@@ -32,7 +33,7 @@ def saved_payload(path: Path) -> dict:
 class StockServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, address, directory=ROOT, period="2y", colors=None):
+    def __init__(self, address, directory=ROOT, period="2y", colors=None, screener=None):
         self.directory = Path(directory).resolve()
         self.directory.mkdir(parents=True, exist_ok=True)
         self.period = period
@@ -50,6 +51,9 @@ class StockServer(ThreadingHTTPServer):
                     pass
         # yfinance uses shared logging state; serialize downloads and file writes.
         self.search_lock = threading.Lock()
+        self.screener = screener or screen.run
+        self.screen_path = self.directory / screen.RESULT_NAME
+        self.screen_lock = threading.Lock()
         self.last_refresh: dict[str, float] = {}
         super().__init__(address, StockHandler)
 
@@ -96,6 +100,12 @@ class StockHandler(BaseHTTPRequestHandler):
             return
         if path == "/":
             self.home()
+            return
+        if path == "/screen":
+            self.respond(200, (ROOT / "screen.html").read_text(encoding="utf-8"), "text/html; charset=utf-8")
+            return
+        if path == "/api/screen":
+            self.respond(200, {"result": screen.load(self.server.screen_path)})
             return
         if re.fullmatch(r"/chart/[A-Z0-9][A-Z0-9.^=\-]{0,31}", path):
             symbol = path[len("/chart/"):]
@@ -148,6 +158,9 @@ class StockHandler(BaseHTTPRequestHandler):
         if not self.trusted_request():
             self.respond(403, {"error": "僅接受本機網頁請求。"})
             return
+        if self.path == "/api/screen":
+            self.screening()
+            return
         if self.path == "/api/chat":
             self.chat()
             return
@@ -181,6 +194,32 @@ class StockHandler(BaseHTTPRequestHandler):
                                "url": f"/chart/{quote(stock.symbol, safe='')}"})
         except Exception:
             self.respond(422, {"error": f"無法取得 {symbol} 的日K資料，請確認代碼或稍後重試。"})
+
+    def screening(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if not 0 < length <= 512 or self.headers.get_content_type() != "application/json":
+                raise ValueError("請使用 JSON 空物件 {} 執行篩選。")
+            body = json.loads(self.rfile.read(length))
+            if not isinstance(body, dict) or body:
+                raise ValueError("請使用 JSON 空物件 {} 執行篩選。")
+        except (ValueError, UnicodeError):
+            self.respond(400, {"error": "請使用 JSON 空物件 {} 執行篩選。"})
+            return
+        if not self.server.screen_lock.acquire(blocking=False):
+            self.respond(409, {"error": "篩選正在執行中，請稍候。"})
+            return
+        try:
+            with self.server.search_lock:
+                result = self.server.screener()
+            screen.save(result, self.server.screen_path)
+            self.respond(200, {"result": result})
+        except screen.ScreenError as exc:
+            self.respond(502, {"error": str(exc)})
+        except Exception:
+            self.respond(502, {"error": "篩選失敗，請稍後重試。"})
+        finally:
+            self.server.screen_lock.release()
 
     def chat(self):
         try:

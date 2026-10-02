@@ -29,7 +29,8 @@ jobs:
           docker run -d --name stock-chart-ci -p 127.0.0.1:18765:8765 stock-chart:ci
           for attempt in $(seq 1 30); do
             if curl --silent --fail http://127.0.0.1:18765/ | grep -q 'stock-search-form' \
-              && curl --silent --fail http://127.0.0.1:18765/api/chat/status | grep -q '"configured": false'; then
+              && curl --silent --fail http://127.0.0.1:18765/api/chat/status | grep -q '"configured": false' \
+              && curl --silent --fail http://127.0.0.1:18765/screen | grep -q 'screen-run'; then
               exit 0
             fi
             sleep 2

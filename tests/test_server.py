@@ -8,6 +8,7 @@ import pytest
 
 import chart
 import ai_chat
+import screen
 from chart_store import ChartStore
 from server import StockServer
 
@@ -15,6 +16,7 @@ from server import StockServer
 @pytest.fixture
 def web_server(tmp_path, monkeypatch):
     monkeypatch.setattr(chart.yf, "Ticker", Mock(side_effect=AssertionError("不可連線到 Yahoo")))
+    monkeypatch.setattr(chart.yf, "download", Mock(side_effect=AssertionError("不可連線到 Yahoo")))
     server = StockServer(("127.0.0.1", 0), tmp_path)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -230,3 +232,120 @@ def test_bad_refresh_request_is_rejected(web_server):
     for body in ['{"symbol":"../bad","generated":"x"}', '{"symbol":"MU"}', '[]']:
         code, _, _ = request(web_server, "POST", "/api/refresh", body, headers)
         assert code == 400
+
+
+@pytest.fixture
+def screen_server(tmp_path, monkeypatch):
+    monkeypatch.setattr(chart.yf, "Ticker", Mock(side_effect=AssertionError("不可連線到 Yahoo")))
+    monkeypatch.setattr(chart.yf, "download", Mock(side_effect=AssertionError("不可連線到 Yahoo")))
+    result = {"run_at": "2026-10-02T07:00:00+08:00", "fx": 32., "benchmarks": {},
+              "funnel": dict.fromkeys(screen.FUNNEL, 0), "rows": [], "missing": []}
+    server = StockServer(("127.0.0.1", 0), tmp_path, screener=Mock(return_value=result))
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield server
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=3)
+
+
+def test_screen_page_empty_result_and_home_link(screen_server):
+    code, page, headers = request(screen_server, "GET", "/screen")
+    assert code == 200 and headers["Content-Type"] == "text/html; charset=utf-8"
+    assert headers["Cache-Control"] == "no-store" and headers["X-Content-Type-Options"] == "nosniff"
+    assert 'id="screen-run"' in page and 'lang="zh-Hant"' in page
+    assert 'data-sort="r6m"' in page and "aria-sort" in page
+    assert "innerHTML" not in page and screen.DISCLAIMER in page
+    code, data, _ = request(screen_server, "GET", "/api/screen")
+    assert code == 200 and json.loads(data) == {"result": None}
+    assert 'href="/screen"' in request(screen_server, "GET", "/")[1]
+
+
+def test_screen_success_persists_and_uses_search_lock(screen_server):
+    result = screen_server.screener.return_value
+    def fake():
+        assert screen_server.search_lock.locked()
+        assert screen_server.screen_lock.locked()
+        return result
+    screen_server.screener.side_effect = fake
+    code, data, _ = request(screen_server, "POST", "/api/screen", "{}", {"Content-Type": "application/json"})
+    assert code == 200 and json.loads(data) == {"result": result}
+    assert screen.load(screen_server.screen_path) == result
+    assert not screen_server.screen_lock.locked()
+    assert not screen_server.search_lock.locked()
+    assert json.loads(request(screen_server, "GET", "/api/screen")[1]) == {"result": result}
+
+
+@pytest.mark.parametrize("error,message", [(screen.ScreenError("缺少匯率 TWD=X 資料"), "缺少匯率 TWD=X 資料"),
+                                           (RuntimeError("private diagnostic"), "篩選失敗，請稍後重試。")])
+def test_screen_failure_keeps_old_result_and_releases_locks(screen_server, error, message):
+    old = {"rows": [{"ticker": "OLD"}]}
+    screen.save(old, screen_server.screen_path)
+    before = screen_server.screen_path.read_bytes()
+    screen_server.screener.side_effect = error
+    code, data, _ = request(screen_server, "POST", "/api/screen", "{}", {"Content-Type": "application/json"})
+    assert code == 502 and json.loads(data) == {"error": message}
+    assert screen_server.screen_path.read_bytes() == before
+    assert not screen_server.screen_lock.locked() and not screen_server.search_lock.locked()
+
+
+def test_screen_save_failure_keeps_previous_result(screen_server, monkeypatch):
+    old = {"rows": [{"ticker": "OLD"}]}
+    screen.save(old, screen_server.screen_path)
+    monkeypatch.setattr(screen, "save", Mock(side_effect=OSError("disk unavailable")))
+    code, data, _ = request(screen_server, "POST", "/api/screen", "{}", {"Content-Type": "application/json"})
+    assert code == 502 and "篩選失敗" in json.loads(data)["error"]
+    assert screen.load(screen_server.screen_path) == old
+    assert not screen_server.screen_lock.locked()
+
+
+def test_screen_concurrent_run_returns_conflict_but_previous_result_readable(screen_server):
+    entered, release = threading.Event(), threading.Event()
+    old = {"rows": []}
+    screen.save(old, screen_server.screen_path)
+    result = screen_server.screener.return_value
+    def fake():
+        entered.set()
+        assert release.wait(4)
+        return result
+    screen_server.screener.side_effect = fake
+    responses = []
+    worker = threading.Thread(target=lambda: responses.append(request(
+        screen_server, "POST", "/api/screen", "{}", {"Content-Type": "application/json"})))
+    worker.start()
+    try:
+        assert entered.wait(2)
+        code, data, _ = request(screen_server, "POST", "/api/screen", "{}", {"Content-Type": "application/json"})
+        assert code == 409 and json.loads(data) == {"error": "篩選正在執行中，請稍候。"}
+        assert json.loads(request(screen_server, "GET", "/api/screen")[1]) == {"result": old}
+    finally:
+        release.set()
+        worker.join(timeout=3)
+    assert responses[0][0] == 200 and screen_server.screener.call_count == 1
+
+
+def test_screen_cross_origin_rejected(screen_server):
+    code, _, _ = request(screen_server, "POST", "/api/screen", "{}", {
+        "Content-Type": "application/json", "Origin": "https://unrelated.example"})
+    assert code == 403
+    screen_server.screener.assert_not_called()
+
+
+@pytest.mark.parametrize("body,headers", [
+    ('{"x":1}', {"Content-Type": "application/json"}), ('[]', {"Content-Type": "application/json"}),
+    ('null', {"Content-Type": "application/json"}), ('true', {"Content-Type": "application/json"}),
+    ('{', {"Content-Type": "application/json"}), ('{}', {"Content-Type": "text/plain"}),
+    ('{}', {}), ('{}', {"Content-Type": "application/json", "Content-Length": "0"}),
+    ('{}', {"Content-Type": "application/json", "Content-Length": "-1"}),
+    ('{}', {"Content-Type": "application/json", "Content-Length": "invalid"}),
+    ('{}' + ' ' * 511, {"Content-Type": "application/json"}),
+    (b'\xff', {"Content-Type": "application/json"}),
+])
+def test_screen_rejects_invalid_body_and_content_length(screen_server, body, headers):
+    assert request(screen_server, "POST", "/api/screen", body, headers)[0] == 400
+    screen_server.screener.assert_not_called()
+
+
+def test_screen_accepts_maximum_body_length(screen_server):
+    assert request(screen_server, "POST", "/api/screen", '{}' + ' ' * 510,
+                   {"Content-Type": "application/json; charset=utf-8"})[0] == 200

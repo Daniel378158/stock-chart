@@ -2,6 +2,8 @@
 .venv
 __pycache__
 .pytest_cache
+screen_result.json
+screen_result.json.tmp
 tests
 *_chart.html
 charts.sqlite3*

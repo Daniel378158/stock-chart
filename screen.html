@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>強勢股篩選 · 台美股圖表</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0f16;--panel:#111a27;--line:#283448;--ink:#e1eaf6;--muted:#91a0b5;--gold:#ffca67}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% -10%,#1c3145 0,transparent 37%),var(--bg);color:var(--ink);font:14px/1.6 system-ui,"Microsoft JhengHei",sans-serif}
+a{color:var(--gold);text-decoration:none}button,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.55;cursor:wait}button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+.header{display:flex;justify-content:space-between;align-items:center;padding:23px clamp(20px,5vw,70px);border-bottom:1px solid var(--line)}.brand{font-size:11px;letter-spacing:3px;color:var(--gold)}.header a{font-size:12px;color:var(--muted)}
+main{max-width:1390px;margin:auto;padding:45px clamp(20px,5vw,70px) 65px}.hero{display:flex;justify-content:space-between;gap:25px;align-items:center}.kicker{font-size:11px;letter-spacing:3px;color:var(--gold);font-weight:700}h1{font-size:clamp(28px,4vw,43px);letter-spacing:-1px;line-height:1.2;margin:12px 0}h2{font-size:16px;margin:0}p{margin:8px 0;color:var(--muted)}.run-button{background:var(--gold);color:#21190d;border:1px solid var(--gold);font-weight:700;border-radius:7px;padding:12px 25px;white-space:nowrap}
+.message{min-height:27px;margin:18px 0;color:var(--gold)}.message[data-error=true]{color:#ff96a3}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;margin-bottom:20px}.run-meta{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:20px}
+.benchmarks{display:grid;grid-template-columns:1fr 1fr;gap:14px}.benchmark{padding:17px 20px;border:1px solid #34465c;background:#152233;border-radius:9px}.benchmark h3{margin:0 0 10px;font-size:14px}.benchmark p{font-size:12px}.benchmark strong{color:var(--ink);font-size:15px;font-variant-numeric:tabular-nums}.funnel{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:22px}.stage{position:relative;border-top:2px solid #3c526a;padding:12px 8px}.stage:last-child{border-color:var(--gold)}.stage:not(:last-child)::after{content:'→';position:absolute;right:0;top:27px;color:#58718d}.stage span{display:block;font-size:12px;color:var(--muted)}.stage strong{font-size:26px;font-variant-numeric:tabular-nums}.stage:last-child strong{color:var(--gold)}details{font-size:12px;margin-top:14px;color:var(--muted)}summary{cursor:pointer}#missing-list{overflow-wrap:anywhere;line-height:1.8}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin:28px 0 13px}.filters{display:flex;gap:13px;align-items:center}.filters label{font-size:12px;color:var(--muted)}select{margin-left:7px;background:var(--panel);color:var(--ink);border:1px solid #3b4e65;border-radius:5px;padding:7px 9px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:68vh;background:var(--panel)}table{border-collapse:separate;border-spacing:0;width:100%;white-space:nowrap}th{background:#172538;position:sticky;top:0;z-index:1;text-align:left;font-size:12px;color:#a9bad0}th,td{padding:12px 14px;border-bottom:1px solid #233147}th button{background:none;border:0;padding:0;color:inherit;font:inherit;font-weight:600}th[aria-sort=ascending],th[aria-sort=descending]{color:var(--gold)}tr:nth-child(even) td{background:#121e2d}tr:hover td{background:#1a2a3e}.num{text-align:right;font-variant-numeric:tabular-nums}.symbol{border:0;background:none;padding:0;color:#c9ddf7;font-weight:700;font-size:14px}.symbol:hover{text-decoration:underline;color:var(--gold)}.level{display:inline-block;padding:3px 9px;background:#23394d;border-radius:5px;font-size:11px}.strict{color:var(--gold);background:#3b321f}.positive{color:#27c69a}.negative{color:#f05b68}.empty{text-align:center;padding:42px 18px;color:var(--muted);white-space:normal}.table-note{font-size:11px;color:var(--muted);margin-top:10px}.count{font-size:12px;font-weight:400;color:var(--muted);margin-left:9px}footer{border-top:1px solid var(--line);padding-top:19px;margin-top:28px;color:var(--muted);font-size:12px}
+@media(max-width:700px){main{padding:28px 18px}.header{padding:18px}.hero{align-items:flex-start;flex-direction:column}.run-button{width:100%}.benchmarks{grid-template-columns:1fr}.funnel{grid-template-columns:repeat(3,1fr)}.panel{padding:16px}.filters{flex-wrap:wrap}.stage strong{font-size:23px}th,td{padding:11px}}
+</style>
+</head>
+<body>
+<header class="header"><div class="brand">MARKET / SCREENER</div><a href="/">← 回首頁</a></header>
+<main>
+<section class="hero"><div><div class="kicker">RELATIVE STRENGTH / US + TW</div><h1>強勢股篩選</h1><p>從 609 檔台美股，找出趨勢與流動性合格、相對大盤強勢的候選股。</p></div><button id="screen-run" class="run-button" type="button">執行篩選</button></section>
+<p id="screen-message" class="message" role="status" aria-live="polite">讀取上次結果…</p>
+<section id="screen-summary" class="panel" aria-label="篩選摘要" hidden>
+<div class="run-meta"><span id="run-time"></span><span id="fx"></span></div>
+<div id="benchmarks" class="benchmarks"></div><div id="funnel" class="funnel" aria-label="篩選漏斗"></div>
+<details id="missing"><summary id="missing-summary"></summary><p id="missing-list"></p></details>
+</section>
+<div class="toolbar"><h2>候選清單<span id="row-count" class="count"></span></h2><div class="filters"><label for="level-filter">等級<select id="level-filter"><option value="">全部</option><option value="嚴格">嚴格</option><option value="寬鬆">寬鬆</option></select></label><label for="market-filter">市場<select id="market-filter"><option value="">全部</option><option value="us">美股</option><option value="tw">台股</option></select></label></div></div>
+<div class="table-wrap"><table aria-label="強勢股候選清單"><thead><tr>
+<th scope="col" aria-sort="none"><button type="button" data-sort="level">等級</button></th>
+<th scope="col" aria-sort="none"><button type="button" data-sort="ticker">代碼</button></th>
+<th scope="col" aria-sort="none"><button type="button" data-sort="name">名稱</button></th>
+<th scope="col" aria-sort="none"><button type="button" data-sort="market">市場</button></th>
+<th scope="col" aria-sort="none" class="num"><button type="button" data-sort="price">現價</button></th>
+<th scope="col" aria-sort="none" class="num"><button type="button" data-sort="r1m">1M</button></th>
+<th scope="col" aria-sort="none" class="num"><button type="button" data-sort="r6m">6M</button></th>
+<th scope="col" aria-sort="none" class="num"><button type="button" data-sort="value_usd">10 日均成交額（百萬 USD）</button></th>
+</tr></thead><tbody id="screen-rows"><tr><td colspan="8" class="empty">尚未執行，按下「執行篩選」。</td></tr></tbody></table></div>
+<p class="table-note">預設嚴格優先，再依 1M 報酬由高到低。點選 6M 欄可依半年漲幅排序；點代碼開啟個股圖表。現價以該市場貨幣計價。</p>
+<footer>本工具依歷史價格自動篩選，僅供輔助參考，不構成投資建議。<br>名單是候選清單，不是買進訊號。Yahoo 資料可能延遲或漏檔；執行期間個股搜尋會等待。</footer>
+</main>
+<script>
+(() => {
+ 'use strict';
+ const byId=id=>document.getElementById(id),runButton=byId('screen-run'),message=byId('screen-message');
+ const level=byId('level-filter'),market=byId('market-filter'),tbody=byId('screen-rows');
+ const headers=[...document.querySelectorAll('[data-sort]')],numeric=new Set(['price','r1m','r6m','value_usd']);
+ const labels={universe:'範圍',data:'資料',liquidity:'流動性',trend:'趨勢',loose:'寬鬆',strict:'嚴格'};
+ let result=null,busy=false,opening=false,sortKey=null,direction=1,loadVersion=0;
+ const pct=x=>`${x>=0?'+':''}${(x*100).toFixed(1)}%`;
+ const threshold=b=>b>0?pct(2*b):'0（大盤下跌）';
+ function node(tag,text,className){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(className)el.className=className;return el;}
+ function status(text,error=false){message.textContent=text;message.dataset.error=String(error);}
+ for(const header of headers)header.dataset.label=header.textContent;
+ function renderTable(){
+  let rows=(result?.rows||[]).filter(row=>(!level.value||row.level===level.value)&&(!market.value||row.market===market.value));
+  if(sortKey)rows.sort((a,b)=>direction*(numeric.has(sortKey)?a[sortKey]-b[sortKey]:String(a[sortKey]).localeCompare(String(b[sortKey]),'zh-Hant')));
+  for(const header of headers){const active=header.dataset.sort===sortKey;header.textContent=header.dataset.label+(active?(direction===1?' ▲':' ▼'):'');header.parentElement.setAttribute('aria-sort',active?(direction===1?'ascending':'descending'):'none');}
+  tbody.replaceChildren();byId('row-count').textContent=result?`${rows.length} / ${result.rows.length} 檔`:'';
+  if(!rows.length){const tr=node('tr'),td=node('td',!result?'尚未執行，按下「執行篩選」。':result.rows.length?'此篩選條件沒有符合的股票。':'沒有符合條件的股票。','empty');td.colSpan=8;tr.append(td);tbody.append(tr);return;}
+  for(const row of rows){
+   const tr=node('tr'),badge=node('td');badge.append(node('span',row.level,'level'+(row.level==='嚴格'?' strict':'')));
+   const symbol=node('td'),button=node('button',row.ticker,'symbol');button.type='button';button.setAttribute('aria-label',`開啟 ${row.ticker} 圖表`);button.onclick=()=>openChart(row.ticker,button);symbol.append(button);
+   tr.append(badge,symbol,node('td',row.name||'—'),node('td',row.market==='tw'?'台股':'美股'),node('td',row.price.toFixed(2),'num'));
+   for(const value of [row.r1m,row.r6m])tr.append(node('td',pct(value),'num '+(value>=0?'positive':'negative')));
+   tr.append(node('td',(row.value_usd/1e6).toFixed(2),'num'));tbody.append(tr);
+  }
+ }
+ function render(){
+  byId('screen-summary').hidden=!result;
+  if(result){
+   byId('run-time').textContent='執行時間：'+new Date(result.run_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',hour12:false})+'（台北）';
+   byId('fx').textContent=`USD/TWD：${result.fx.toFixed(4)}`;
+   const benchmarks=byId('benchmarks');benchmarks.replaceChildren();
+   for(const key of ['us','tw']){const b=result.benchmarks[key],card=node('article',undefined,'benchmark');card.append(node('h3',`${key==='us'?'美股':'台股'}大盤 · ${b.ticker}`));
+    for(const [label,field] of [['1M','r1m'],['6M','r6m']]){const p=node('p',`${label} 報酬 `);p.append(node('strong',pct(b[field])),document.createTextNode(`　篩選門檻 ${threshold(b[field])}`));card.append(p);}benchmarks.append(card);}
+   const funnel=byId('funnel');funnel.replaceChildren();for(const [key,label] of Object.entries(labels)){const item=node('div',undefined,'stage');item.append(node('span',label),node('strong',String(result.funnel[key])));funnel.append(item);}
+   byId('missing-summary').textContent=`缺資料 ${result.missing.length} 檔`;byId('missing-list').textContent=result.missing.join('、')||'無缺資料。';
+  }
+  renderTable();
+ }
+ async function api(url,options){const response=await fetch(url,options);const data=await response.json();if(!response.ok)throw new Error(data.error||'請求失敗，請稍後重試。');return data;}
+ async function openChart(ticker,button){
+  if(opening)return;opening=true;button.disabled=true;status(`正在取得 ${ticker} 的日 K 資料…`);
+  try{const data=await api('/api/search',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:ticker})});
+   if(typeof data.symbol!=='string'||!/^[A-Z0-9][A-Z0-9.^=\-]{0,31}$/.test(data.symbol)||data.url!==`/chart/${encodeURIComponent(data.symbol)}`)throw new Error('搜尋服務回傳格式不正確。');
+   location.href=data.url;
+  }catch(error){status(error.message,true);}finally{opening=false;button.disabled=false;}
+ }
+ runButton.onclick=async()=>{
+  if(busy)return;busy=true;loadVersion++;runButton.disabled=true;runButton.setAttribute('aria-busy','true');status('下載約 609 檔資料，約 10–60 秒…');
+  try{const data=await api('/api/screen',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});result=data.result;sortKey=null;render();status(`篩選完成，共 ${result.rows.length} 檔候選股。`);}
+  catch(error){status(error.message,true);}finally{busy=false;runButton.disabled=false;runButton.removeAttribute('aria-busy');}
+ };
+ for(const header of headers)header.onclick=()=>{const key=header.dataset.sort;direction=sortKey===key?-direction:numeric.has(key)?-1:1;sortKey=key;renderTable();};
+ level.onchange=market.onchange=renderTable;
+ const version=loadVersion;
+ api('/api/screen').then(data=>{if(version!==loadVersion)return;result=data.result;render();status(result?'已載入上次篩選結果。':'尚未執行，按下「執行篩選」。');}).catch(error=>{if(version===loadVersion)status(error.message,true);});
+})();
+</script>
+</body></html>
